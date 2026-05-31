@@ -1,0 +1,105 @@
+const fetch = require('node-fetch');
+
+exports.handler = async (event) => {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json'
+  };
+
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+
+  let config;
+  try { config = JSON.parse(event.body); }
+  catch (_) { return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
+
+  const { roles = [], companies = [], locations = [], minSalary = '5', gateScore = '450', batch = '2027' } = config;
+
+  const prompt = `You are a job search assistant for a B.Tech Computer Science/IT student graduating in June ${batch} in India.
+
+STRICT FILTERS — include ONLY jobs matching ALL of these:
+1. BATCH: Must accept ${parseInt(batch)-1} or ${batch} passout students. EXCLUDE jobs only for earlier batches.
+2. ROLES: ${roles.join(' OR ')}
+3. COMPANY TYPE: ${companies.join(', ')} — reputed, stable, good market reputation
+4. LOCATIONS: Only in ${locations.join(', ')}. STRICTLY EXCLUDE Kolkata / West Bengal.
+5. SALARY: Minimum ${minSalary} LPA CTC. Exclude anything below this.
+6. DIFFICULTY: Prefer easy-to-crack for freshers — mass hiring, campus drives, structured process
+7. GATE: Include PSU/Govt jobs via GATE 2026 score of ${gateScore} (CS/IT). Check NTPC, BHEL, IOCL, HPCL, GAIL, BEL, HAL, ONGC, PGCIL, SAIL, MECL, NFL.
+
+Search for currently open or upcoming (next 6 months) opportunities. Include off-campus drives, pool campus drives, and referral drives open to ${batch} batch.
+
+Return for each job:
+- company (string)
+- role (string)  
+- location (string)
+- salary (string e.g. "5–8 LPA")
+- applyLink (string, direct URL — careers page, Naukri, LinkedIn, or official portal)
+- whyGood (string, 1 sentence — why it's ideal for a fresher)
+- batchEligible (string e.g. "${parseInt(batch)-1} & ${batch} passout")
+- type ("MNC" | "Startup" | "Government PSU" | "Product company" | "Service company")
+- easyToCrack (boolean)
+- deadline (string — application deadline if known, else "Rolling")
+- skills (array of 3-5 key skills required)
+- interviewRounds (string e.g. "Aptitude → Technical → HR")
+
+Return ONLY a valid JSON array. No markdown. No explanation. No preamble.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    let text = '';
+    for (const block of (data.content || [])) {
+      if (block.type === 'text') text += block.text;
+    }
+
+    const s = text.indexOf('['), e = text.lastIndexOf(']');
+    if (s !== -1 && e !== -1) {
+      let jobs = JSON.parse(text.slice(s, e + 1));
+      // strict batch safety filter
+      jobs = jobs.filter(j => {
+        const b = (j.batchEligible || '').toLowerCase();
+        return b.includes(batch) || b.includes(String(parseInt(batch)-1)) || !b;
+      });
+      if (jobs.length > 0) return { statusCode: 200, headers, body: JSON.stringify({ jobs, source: 'live' }) };
+    }
+  } catch (err) {
+    console.error('Search error:', err.message);
+  }
+
+  return { statusCode: 200, headers, body: JSON.stringify({ jobs: getFallback(minSalary, gateScore, batch), source: 'fallback' }) };
+};
+
+function getFallback(minSalary, gateScore, batch) {
+  const prev = parseInt(batch) - 1;
+  return [
+    { company: 'TCS', role: 'System Engineer — Java', location: 'Bengaluru / Hyderabad / Pune / Chennai', salary: '3.36–7 LPA', applyLink: 'https://www.tcs.com/careers/india/tcs-national-qualifier-test', whyGood: 'Largest IT employer in India, NQT-based hiring — very easy to crack', batchEligible: `${prev} & ${batch} passout`, type: 'MNC', easyToCrack: true, deadline: 'Rolling', skills: ['Java', 'SQL', 'Aptitude', 'Communication'], interviewRounds: 'NQT → Technical → HR' },
+    { company: 'Infosys', role: 'Systems Engineer — Java/J2EE', location: 'Bengaluru / Hyderabad / Pune / Chennai / Mumbai', salary: '3.6–8 LPA', applyLink: 'https://www.infosys.com/careers/apply.html', whyGood: 'InfyTQ platform for 2027 batch, strong global brand and training', batchEligible: `${prev} & ${batch} passout`, type: 'MNC', easyToCrack: true, deadline: 'Rolling', skills: ['Java', 'OOP', 'DBMS', 'Logical Reasoning'], interviewRounds: 'Online Test → Technical → HR' },
+    { company: 'Wipro', role: 'Project Engineer — Java Backend', location: 'Bengaluru / Hyderabad / Chennai / Noida', salary: '3.5–6.5 LPA', applyLink: 'https://careers.wipro.com', whyGood: 'ELITE & Turbo programs specifically for freshers, high intake volume', batchEligible: `${prev} & ${batch} passout`, type: 'MNC', easyToCrack: true, deadline: 'Rolling', skills: ['Java', 'Spring', 'MySQL', 'Problem Solving'], interviewRounds: 'NLTH → Coding → HR' },
+    { company: 'Cognizant', role: 'Programmer Analyst Trainee', location: 'Bengaluru / Hyderabad / Chennai / Pune', salary: '4–7 LPA', applyLink: 'https://careers.cognizant.com/global/en/fresh-graduates', whyGood: 'GenC program built from ground up for freshers, structured 6-month training', batchEligible: `${prev} & ${batch} passout`, type: 'MNC', easyToCrack: true, deadline: 'Rolling', skills: ['Java', 'Aptitude', 'Verbal', 'SQL'], interviewRounds: 'GenC Test → Technical → HR' },
+    { company: 'Zoho Corporation', role: 'Software Engineer — Java/Spring Boot', location: 'Chennai / Hyderabad / Pune', salary: '5–10 LPA', applyLink: 'https://careers.zoho.com', whyGood: 'Best Indian product company, no bond, coding-only selection, fast growth', batchEligible: `${prev} & ${batch} passout`, type: 'Product company', easyToCrack: true, deadline: 'Rolling', skills: ['Java', 'Data Structures', 'Algorithms', 'Spring Boot'], interviewRounds: 'Coding Round → Technical (2) → HR' },
+    { company: 'NTPC Limited', role: 'Executive Trainee — CS/IT', location: 'Delhi NCR / Pan India', salary: '7.5–10 LPA CTC', applyLink: 'https://www.ntpccareers.net', whyGood: 'Maharatna PSU, GATE shortlist, excellent job security + pension + housing', batchEligible: `${prev} & ${batch} passout`, type: 'Government PSU', easyToCrack: true, deadline: 'Check portal', skills: ['GATE CS', 'Networks', 'OS', 'DBMS'], interviewRounds: 'GATE Score → Document Verification → Medical' },
+    { company: 'BHEL', role: 'Engineer Trainee — IT/CS', location: 'Pan India (Bhopal / Haridwar / Noida)', salary: '6.5–9 LPA CTC', applyLink: 'https://careers.bhel.in', whyGood: 'Navratna PSU, GATE merit selection, strong perks and housing', batchEligible: `${prev} & ${batch} passout`, type: 'Government PSU', easyToCrack: true, deadline: 'Check portal', skills: ['GATE CS', 'OS', 'Networks', 'Programming'], interviewRounds: 'GATE Score → Interview → Medical' },
+    { company: 'IOCL', role: 'Junior Engineering Assistant — IT', location: 'Delhi NCR / Mumbai / Pan India', salary: '8–12 LPA CTC', applyLink: 'https://iocl.com/careers', whyGood: 'Navratna PSU, highest pay among PSUs, housing + medical + education allowance', batchEligible: `${prev} & ${batch} passout`, type: 'Government PSU', easyToCrack: true, deadline: 'Check portal', skills: ['GATE CS', 'Networking', 'DBMS', 'Linux'], interviewRounds: 'GATE Score → Interview → Medical' },
+    { company: 'Accenture India', role: 'Associate Software Engineer', location: 'Bengaluru / Hyderabad / Pune / Mumbai / Delhi NCR', salary: '4.5–8 LPA', applyLink: 'https://www.accenture.com/in-en/careers/local/fresher-jobs', whyGood: 'Fortune 500 global brand, easy aptitude-based hiring, large fresher batch every year', batchEligible: `${prev} & ${batch} passout`, type: 'MNC', easyToCrack: true, deadline: 'Rolling', skills: ['Java', 'Communication', 'Aptitude', 'Problem Solving'], interviewRounds: 'Cognitive Assessment → Technical → HR' },
+    { company: 'HCL Technologies', role: 'Graduate Engineer Trainee — Java', location: 'Bengaluru / Hyderabad / Noida / Chennai / Pune', salary: '3.5–6 LPA', applyLink: 'https://www.hcltech.com/careers', whyGood: 'Top 4 Indian IT, early batch portals, structured training program', batchEligible: `${prev} & ${batch} passout`, type: 'MNC', easyToCrack: true, deadline: 'Rolling', skills: ['Java', 'OOP', 'SQL', 'Communication'], interviewRounds: 'Aptitude → Coding → Technical → HR' },
+    { company: 'Capgemini', role: 'Analyst — Java Developer', location: 'Bengaluru / Mumbai / Pune / Hyderabad', salary: '4–7 LPA', applyLink: 'https://www.capgemini.com/in-en/careers/', whyGood: 'Global French MNC, Game of Code hiring platform, very easy selection process', batchEligible: `${prev} & ${batch} passout`, type: 'MNC', easyToCrack: true, deadline: 'Rolling', skills: ['Java', 'Aptitude', 'Pseudo Code', 'Communication'], interviewRounds: 'Game of Code → Technical → HR' },
+    { company: 'GAIL (India) Ltd', role: 'Executive Trainee — IT', location: 'Delhi NCR / Pan India', salary: '7–10 LPA CTC', applyLink: 'https://gailonline.com/careers.html', whyGood: 'Navratna PSU via GATE, excellent stability and benefits package', batchEligible: `${prev} & ${batch} passout`, type: 'Government PSU', easyToCrack: true, deadline: 'Check portal', skills: ['GATE CS', 'Networking', 'OS', 'DBMS'], interviewRounds: 'GATE Score → GD/Interview → Medical' }
+  ];
+}

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Dashboard — JobMailer</title>
+<meta name="description" content="Configure your automated fresher job digest. Set roles, locations, salary, GATE score, and schedule."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Bricolage+Grotesque:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/main.css"/>
+</head>
+<body>
+
+<nav class="nav scrolled" id="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <span class="logo-icon">⚡</span>
+      <span class="logo-text">JobMailer</span>
+      <span class="logo-badge">BETA</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html">← Home</a>
+      <a href="#settings">Settings</a>
+      <a href="#results">Results</a>
+    </div>
+  </div>
+</nav>
+
+<div class="dash-page">
+  <!-- Header -->
+  <div class="dash-header">
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
+        <div>
+          <h1>Your Job Digest Dashboard</h1>
+          <p>Configure filters, run searches, and manage your automated emails</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div class="status-pill inactive" id="statusPill">
+            <span class="status-dot-sm"></span>
+            <span id="statusText">Inactive</span>
+          </div>
+          <button class="btn btn-primary btn-sm" id="runBtn" onclick="runSearch()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Run Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-body">
+    <div class="container">
+
+      <!-- Metrics -->
+      <div class="metrics-row" style="margin-bottom:28px;">
+        <div class="metric-card">
+          <div class="metric-num" id="mTotal">—</div>
+          <div class="metric-label">Last jobs found</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-num" id="mRuns">0</div>
+          <div class="metric-label">Total runs</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-num" id="mNext">—</div>
+          <div class="metric-label">Frequency set</div>
+        </div>
+      </div>
+
+      <div class="dash-grid" id="settings">
+        <!-- LEFT: Settings -->
+        <div>
+          <!-- Email + Schedule panel -->
+          <div class="panel" style="margin-bottom:20px;">
+            <div class="panel-header">
+              <div class="panel-title"><span class="panel-title-icon">📬</span> Delivery Settings</div>
+            </div>
+            <div class="panel-body">
+              <div class="field">
+                <label class="field-label">Your email address</label>
+                <input type="email" id="emailInput" placeholder="your@gmail.com"/>
+                <div class="field-hint">Where your daily digest will be delivered</div>
+              </div>
+              <div class="field">
+                <label class="field-label">Your name (for welcome email)</label>
+                <input type="text" id="nameInput" placeholder="Arjun Sharma"/>
+              </div>
+              <div class="field">
+                <label class="field-label">Digest frequency</label>
+                <select id="frequency">
+                  <option value="daily">Daily — every morning 8 AM IST</option>
+                  <option value="every2days">Every 2 days — 8 AM IST</option>
+                  <option value="weekly">Weekly — Monday 8 AM IST</option>
+                  <option value="now">Manual only — use Run Now</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Graduating batch</label>
+                <select id="batchYear">
+                  <option value="2027">2027 (June 2027)</option>
+                  <option value="2026">2026 (June 2026)</option>
+                  <option value="2028">2028 (June 2028)</option>
+                </select>
+              </div>
+              <hr class="divider"/>
+              <div class="toggle-row">
+                <div class="toggle-label-text">
+                  <strong>Activate automatic scheduler</strong>
+                  <small>Turn on to receive emails on your chosen schedule</small>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="activeToggle" onchange="onToggle()"/>
+                  <div class="toggle-track"></div>
+                  <div class="toggle-thumb"></div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Roles panel -->
+          <div class="panel" style="margin-bottom:20px;">
+            <div class="panel-header">
+              <div class="panel-title"><span class="panel-title-icon">💼</span> Job Roles</div>
+            </div>
+            <div class="panel-body">
+              <div class="field">
+                <label class="field-label">Select roles to search</label>
+                <div class="chips" id="roleChips">
+                  <span class="chip on" data-val="Java Developer fresher 2027 batch">Java Developer</span>
+                  <span class="chip on" data-val="Software Developer fresher 2027 batch">Software Developer</span>
+                  <span class="chip on" data-val="Software Engineer fresher campus 2027">Software Engineer</span>
+                  <span class="chip on" data-val="Backend Developer Java Spring Boot fresher">Backend Developer</span>
+                  <span class="chip" data-val="Full Stack Developer Java fresher">Full Stack Dev</span>
+                  <span class="chip" data-val="Android Developer fresher Java">Android Dev</span>
+                  <span class="chip" data-val="DevOps Engineer fresher">DevOps Engineer</span>
+                  <span class="chip on-green on" data-val="PSU Executive Trainee GATE CS IT 2026">PSU via GATE</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Company + Location panel -->
+          <div class="panel" style="margin-bottom:20px;">
+            <div class="panel-header">
+              <div class="panel-title"><span class="panel-title-icon">🏢</span> Companies &amp; Locations</div>
+            </div>
+            <div class="panel-body">
+              <div class="field">
+                <label class="field-label">Company types</label>
+                <div class="chips" id="companyChips">
+                  <span class="chip on" data-val="MNC">MNCs</span>
+                  <span class="chip on" data-val="Good Startup">Good startups</span>
+                  <span class="chip on" data-val="Government PSU">Govt / PSU</span>
+                  <span class="chip on" data-val="Product company">Product companies</span>
+                  <span class="chip" data-val="Service company">Service companies</span>
+                  <span class="chip" data-val="FAANG">FAANG / Big Tech</span>
+                </div>
+              </div>
+              <hr class="divider"/>
+              <div class="field">
+                <label class="field-label">Locations <span style="color:var(--text3);font-weight:400;">(Kolkata always excluded)</span></label>
+                <div class="chips" id="locationChips">
+                  <span class="chip on" data-val="Bangalore">Bengaluru</span>
+                  <span class="chip on" data-val="Hyderabad">Hyderabad</span>
+                  <span class="chip on" data-val="Pune">Pune</span>
+                  <span class="chip on" data-val="Chennai">Chennai</span>
+                  <span class="chip on" data-val="Mumbai">Mumbai</span>
+                  <span class="chip on" data-val="Delhi NCR">Delhi NCR</span>
+                  <span class="chip on" data-val="Remote">Remote / WFH</span>
+                  <span class="chip" data-val="Ahmedabad">Ahmedabad</span>
+                  <span class="chip" data-val="Noida">Noida</span>
+                  <span class="chip" data-val="Gurgaon">Gurgaon</span>
+                  <span class="chip" data-val="Bhubaneswar">Bhubaneswar</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Salary + GATE panel -->
+          <div class="panel" style="margin-bottom:20px;">
+            <div class="panel-header">
+              <div class="panel-title"><span class="panel-title-icon">💰</span> Salary &amp; GATE</div>
+            </div>
+            <div class="panel-body">
+              <div class="field">
+                <label class="field-label">Minimum salary (LPA)</label>
+                <div class="salary-row" id="salaryOpts">
+                  <span class="salary-opt" data-val="4">4+ LPA</span>
+                  <span class="salary-opt on" data-val="5">5+ LPA</span>
+                  <span class="salary-opt" data-val="6">6+ LPA</span>
+                  <span class="salary-opt" data-val="7">7+ LPA</span>
+                </div>
+              </div>
+              <hr class="divider"/>
+              <div class="field">
+                <label class="field-label">Your GATE 2026 score (CS / IT)</label>
+                <input type="number" id="gateScore" value="450" min="0" max="1000"
+                  oninput="document.getElementById('gateNum').textContent=this.value"/>
+                <div class="field-hint">Used to match PSU cutoffs. Most PSU CS/IT cutoffs: 350–550.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Save + Run buttons -->
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="saveConfig()" style="flex:1;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save Settings
+            </button>
+            <button class="btn btn-primary" onclick="runSearch()" id="runBtnBottom" style="flex:2;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Search Jobs &amp; Send Digest →
+            </button>
+          </div>
+
+          <!-- Alert -->
+          <div class="alert" id="alertEl"></div>
+          <!-- Progress -->
+          <div class="progress-outer" id="progressEl">
+            <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-label" id="progressLabel">Starting...</div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Status + GATE + Log -->
+        <div>
+
+          <!-- Status card -->
+          <div class="panel" style="margin-bottom:20px;">
+            <div class="panel-header">
+              <div class="panel-title"><span class="panel-title-icon">📡</span> Status</div>
+              <div class="status-pill inactive" id="statusPill2">
+                <span class="status-dot-sm"></span>
+                <span id="statusText2">Inactive</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="log-entry" id="lastRunEntry" style="display:none;">
+                <div class="log-icon-wrap ok">✅</div>
+                <div class="log-info">
+                  <strong id="lastRunMsg">—</strong>
+                  <small id="lastRunTime">—</small>
+                </div>
+              </div>
+              <div id="noRunYet" style="font-size:13px;color:var(--text3);padding:8px 0;">
+                No runs yet. Hit "Run Now" or activate the scheduler.
+              </div>
+            </div>
+          </div>
+
+          <!-- GATE tracker -->
+          <div class="panel" style="margin-bottom:20px;">
+            <div class="panel-header">
+              <div class="panel-title"><span class="panel-title-icon">🏛️</span> GATE PSU Tracker</div>
+            </div>
+            <div class="panel-body">
+              <div class="gate-display">
+                <div class="gate-score-num" id="gateNum">450</div>
+                <div class="gate-score-label">GATE 2026 Score (CS/IT)</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px;">You qualify for most PSU recruitments</div>
+                <div class="psu-chips-sm">
+                  <span class="psu-chip-sm">NTPC</span>
+                  <span class="psu-chip-sm">BHEL</span>
+                  <span class="psu-chip-sm">IOCL</span>
+                  <span class="psu-chip-sm">HPCL</span>
+                  <span class="psu-chip-sm">GAIL</span>
+                  <span class="psu-chip-sm">BEL</span>
+                  <span class="psu-chip-sm">ONGC</span>
+                  <span class="psu-chip-sm">HAL</span>
+                  <span class="psu-chip-sm">PGCIL</span>
+                  <span class="psu-chip-sm">SAIL</span>
+                  <span class="psu-chip-sm">NFL</span>
+                  <span class="psu-chip-sm">MECL</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick links -->
+          <div class="panel" style="margin-bottom:20px;">
+            <div class="panel-header">
+              <div class="panel-title"><span class="panel-title-icon">🔗</span> Quick Apply Links</div>
+            </div>
+            <div class="panel-body" style="padding:12px 24px;">
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <a href="https://www.tcs.com/careers/india/tcs-national-qualifier-test" target="_blank" class="quick-link">TCS NQT Registration →</a>
+                <a href="https://www.infosys.com/careers/apply.html" target="_blank" class="quick-link">Infosys InfyTQ →</a>
+                <a href="https://careers.wipro.com" target="_blank" class="quick-link">Wipro ELITE/Turbo →</a>
+                <a href="https://careers.cognizant.com/global/en/fresh-graduates" target="_blank" class="quick-link">Cognizant GenC →</a>
+                <a href="https://careers.zoho.com" target="_blank" class="quick-link">Zoho Careers →</a>
+                <a href="https://www.ntpccareers.net" target="_blank" class="quick-link">NTPC Executive Trainee →</a>
+                <a href="https://careers.bhel.in" target="_blank" class="quick-link">BHEL Engineer Trainee →</a>
+                <a href="https://iocl.com/careers" target="_blank" class="quick-link">IOCL Careers →</a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Results section -->
+      <div id="results" style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+          <h2 style="font-family:var(--font-display);font-size:24px;font-weight:700;color:white;">
+            Found Jobs <span id="jobCount" style="font-size:16px;font-weight:400;color:var(--text3);">(run search to see results)</span>
+          </h2>
+          <div class="tabs" style="max-width:400px;" id="filterTabs">
+            <button class="tab active" onclick="filterJobs('all', this)">All</button>
+            <button class="tab" onclick="filterJobs('MNC', this)">MNCs</button>
+            <button class="tab" onclick="filterJobs('Government PSU', this)">PSU/Govt</button>
+            <button class="tab" onclick="filterJobs('easy', this)">Easy Only</button>
+          </div>
+        </div>
+        <div id="jobsList">
+          <div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <h3>No results yet</h3>
+            <p>Configure your preferences above and click "Search Jobs &amp; Send Digest" to see matching opportunities.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+.quick-link {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-radius: var(--radius);
+  background: var(--ink3); border: 1px solid var(--border);
+  color: var(--text2); font-size: 13px; font-weight: 500;
+  transition: all 0.15s;
+}
+.quick-link:hover { background: var(--surf3); color: var(--blue2); border-color: rgba(45,122,255,0.3); }
+</style>
+
+<script src="js/dashboard.js"></script>
+</body>
+</html>
